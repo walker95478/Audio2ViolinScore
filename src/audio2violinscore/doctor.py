@@ -10,13 +10,37 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MIN_FREE_BYTES = 12 * 1024**3
 REQUIRED_CHECKS = ("python", "git", "ffmpeg", "ffprobe", "musescore", "disk", "unicode")
 
 RunFunction = Callable[..., Any]
 WhichFunction = Callable[[str], str | None]
 DiskUsageFunction = Callable[[str], Any]
+
+
+def _find_project_root() -> Path:
+    """Find the workspace root when the package is installed non-editably."""
+
+    configured = os.environ.get("A2VS_PROJECT_ROOT")
+    if configured:
+        configured_path = Path(configured).expanduser()
+        if configured_path.is_dir():
+            return configured_path.resolve()
+
+    current = Path.cwd().resolve()
+    for candidate in (current, *current.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+
+    source_path = Path(__file__).resolve()
+    for candidate in (source_path.parent, *source_path.parents):
+        if (candidate / "pyproject.toml").is_file():
+            return candidate
+
+    return current
+
+
+PROJECT_ROOT = _find_project_root()
 
 
 def _run_command(*args: Any, **kwargs: Any) -> Any:
@@ -318,7 +342,7 @@ def doctor_report(
     run_fn: RunFunction = _run_command,
     disk_usage_fn: DiskUsageFunction = shutil.disk_usage,
 ) -> dict[str, Any]:
-    root = Path(project_root or PROJECT_ROOT).resolve()
+    root = Path(project_root or _find_project_root()).resolve()
     checks = {
         "python": check_python(),
         "git": check_tool(
