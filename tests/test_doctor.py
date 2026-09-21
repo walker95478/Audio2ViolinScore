@@ -152,3 +152,71 @@ def test_json_output_and_exit_code(monkeypatch, capsys):
     output = json.loads(capsys.readouterr().out)
     assert output["schema_version"] == 1
     assert output["status"] == "pass"
+
+def create_melody_worker_files(tmp_path: Path):
+    environment = tmp_path / "workers" / "melody" / ".venv"
+    scripts = environment / "Scripts"
+    scripts.mkdir(parents=True)
+    (scripts / "python.exe").write_text("fake", encoding="utf-8")
+    (tmp_path / "workers" / "melody" / "worker.py").write_text("fake", encoding="utf-8")
+
+
+def test_installed_melody_worker_version_report_passes(tmp_path):
+    create_melody_worker_files(tmp_path)
+
+    def runner(args, **kwargs):
+        if args[-2:] == ["--version", "--json"]:
+            return SimpleNamespace(
+                returncode=0,
+                stdout=json.dumps(
+                    {
+                        "status": "pass",
+                        "packages": {
+                            "demucs": "4.1.0",
+                            "basic_pitch": "0.4.0",
+                            "torch": "2.1.2",
+                            "onnxruntime": "1.20.0",
+                        },
+                        "device": "cpu",
+                        "torch_cuda_available": False,
+                        "onnxruntime_providers": ["CPUExecutionProvider"],
+                        "model_cache": "cache/melody",
+                        "torch_cache": "cache/torch",
+                    }
+                ),
+                stderr="",
+            )
+        return fake_runner(args, **kwargs)
+
+    report = doctor.doctor_report(
+        tmp_path,
+        which_fn=healthy_which,
+        run_fn=runner,
+        disk_usage_fn=healthy_disk,
+    )
+
+    assert report["status"] == "pass"
+    assert report["workers"]["melody"]["status"] == "pass"
+    assert report["workers"]["melody"]["versions"]["demucs"] == "4.1.0"
+    assert not any(item["check"] == "worker:melody" for item in report["warnings"])
+
+
+def test_installed_but_broken_melody_worker_is_warning(tmp_path):
+    create_melody_worker_files(tmp_path)
+
+    def runner(args, **kwargs):
+        if args[-2:] == ["--version", "--json"]:
+            return SimpleNamespace(returncode=1, stdout="", stderr="import failed")
+        return fake_runner(args, **kwargs)
+
+    report = doctor.doctor_report(
+        tmp_path,
+        which_fn=healthy_which,
+        run_fn=runner,
+        disk_usage_fn=healthy_disk,
+    )
+
+    assert report["status"] == "pass"
+    assert report["exit_code"] == 0
+    assert report["workers"]["melody"]["status"] == "broken"
+    assert {"check": "worker:melody", "status": "broken", "reason": "version_command_failed"} in report["warnings"]
