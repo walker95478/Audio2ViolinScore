@@ -1,0 +1,1 @@
+"""Canonical note event models."""
