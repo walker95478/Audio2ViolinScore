@@ -2,7 +2,7 @@
 
 审计日期：2026-09-21
 工作区：`D:\软件\扒谱`
-阶段：Phase 0 已审计并固化；Phase 1A 已完成并待 push
+阶段：Phase 0 已审计并固化；Phase 1A 已完成并已推送
 
 ## 1. 当前结论
 
@@ -38,7 +38,7 @@
 | Core Python | PASS | `D:\软件\扒谱\.venv\Scripts\python.exe`，Python `3.11.15` |
 | uv | PASS | `uv 0.11.15` |
 | Git | PASS | `C:\Program Files\Git\cmd\git.EXE`，`git version 2.52.0.windows.1` |
-| FFmpeg | PASS | `C:\Users\jxgm\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.1-full_build\bin\ffmpeg.EXE` |
+| FFmpeg | PASS | `%LOCALAPPDATA%\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-8.1.1-full_build\bin\ffmpeg.EXE` |
 | ffprobe | PASS | 同一 FFmpeg 8.1.1 `bin` 目录下的 `ffprobe.EXE` |
 | MuseScore Studio 4 | PASS | `C:\Program Files\MuseScore 4\bin\MuseScore4.exe`；winget `4.7.5.260831071`，CLI `4.7.5` |
 | D: 空间 | PASS | 实测可用 `112.43 GiB`，门槛 `12 GiB` |
