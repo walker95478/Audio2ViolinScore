@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -324,17 +325,87 @@ def check_nvidia(
     }
 
 
-def check_workers(project_root: Path) -> dict[str, Any]:
-    workers: dict[str, Any] = {}
-    for name in ("melody", "muscriptor"):
-        environment = project_root / "workers" / name / ".venv"
-        workers[name] = {
-            "status": "installed" if environment.is_dir() else "not_installed",
-            "path": str(environment),
+def _check_melody_worker(
+    project_root: Path,
+    run_fn: RunFunction,
+) -> dict[str, Any]:
+    environment = project_root / "workers" / "melody" / ".venv"
+    python_path = environment / "Scripts" / "python.exe"
+    worker_path = project_root / "workers" / "melody" / "worker.py"
+    base = {
+        "path": str(environment),
+        "python": str(python_path),
+        "worker": str(worker_path),
+    }
+    if not environment.is_dir() or not python_path.is_file() or not worker_path.is_file():
+        return {"status": "not_installed", **base}
+
+    try:
+        result = run_fn(
+            [str(python_path), str(worker_path), "--version", "--json"],
+            cwd=str(project_root),
+            env={**os.environ, "PYTHONUTF8": "1"},
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=45,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {"status": "broken", "reason": "worker_python_not_found", **base}
+    except subprocess.TimeoutExpired:
+        return {"status": "broken", "reason": "version_command_timeout", **base}
+    except OSError:
+        return {"status": "broken", "reason": "version_command_os_error", **base}
+
+    if result.returncode != 0:
+        return {
+            "status": "broken",
+            "reason": "version_command_failed",
+            "returncode": result.returncode,
+            "stderr": _version_line(result),
+            **base,
         }
-    return workers
+    try:
+        report = json.loads(result.stdout or "")
+    except json.JSONDecodeError:
+        return {"status": "broken", "reason": "version_json_malformed", **base}
+    if not isinstance(report, dict) or report.get("status") != "pass":
+        return {
+            "status": "broken",
+            "reason": "version_report_failed",
+            "report": report,
+            **base,
+        }
+    return {
+        "status": "pass",
+        "versions": report.get("packages", {}),
+        "device": report.get("device", "cpu"),
+        "torch_cuda_available": report.get("torch_cuda_available"),
+        "onnxruntime_providers": report.get("onnxruntime_providers", []),
+        "model_cache": report.get("model_cache"),
+        "torch_cache": report.get("torch_cache"),
+        **base,
+    }
 
 
+def check_workers(
+    project_root: Path,
+    *,
+    run_fn: RunFunction = _run_command,
+) -> dict[str, Any]:
+    melody = _check_melody_worker(project_root, run_fn)
+    muscriptor_environment = project_root / "workers" / "muscriptor" / ".venv"
+    return {
+        "melody": melody,
+        "muscriptor": {
+            "status": (
+                "installed" if muscriptor_environment.is_dir() else "not_installed"
+            ),
+            "path": str(muscriptor_environment),
+        },
+    }
 def doctor_report(
     project_root: Path | None = None,
     *,
@@ -384,7 +455,7 @@ def doctor_report(
         "disk": check_disk(disk_usage_fn),
         "unicode": check_unicode_path(root, run_fn),
     }
-    workers = check_workers(root)
+    workers = check_workers(root, run_fn=run_fn)
     nvidia = check_nvidia(which_fn=which_fn, run_fn=run_fn, cwd=root)
     failures = [name for name in REQUIRED_CHECKS if checks[name]["status"] != "pass"]
     warnings = []
@@ -393,6 +464,14 @@ def doctor_report(
     for name, result in workers.items():
         if result["status"] == "not_installed":
             warnings.append({"check": f"worker:{name}", "status": "not_installed"})
+        elif result["status"] == "broken":
+            warnings.append(
+                {
+                    "check": f"worker:{name}",
+                    "status": "broken",
+                    "reason": result.get("reason"),
+                }
+            )
 
     return {
         "schema_version": 1,
