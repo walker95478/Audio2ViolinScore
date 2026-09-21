@@ -4,15 +4,19 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import Sequence
+from collections.abc import Sequence
 
 from .doctor import doctor_report, format_human
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="a2vs", description="Audio2ViolinScore Core CLI")
+    parser = argparse.ArgumentParser(
+        prog="a2vs", description="Audio2ViolinScore Core CLI"
+    )
     subparsers = parser.add_subparsers(dest="command")
-    doctor_parser = subparsers.add_parser("doctor", help="diagnose the local environment")
+    doctor_parser = subparsers.add_parser(
+        "doctor", help="diagnose the local environment"
+    )
     doctor_parser.add_argument("--json", action="store_true", help="emit JSON")
     return parser
 

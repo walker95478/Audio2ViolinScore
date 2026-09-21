@@ -6,8 +6,9 @@ import os
 import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MIN_FREE_BYTES = 12 * 1024**3
@@ -24,7 +25,9 @@ def _run_command(*args: Any, **kwargs: Any) -> Any:
 
 def _version_line(result: Any) -> str | None:
     output = "\n".join(
-        value for value in (getattr(result, "stdout", ""), getattr(result, "stderr", "")) if value
+        value
+        for value in (getattr(result, "stdout", ""), getattr(result, "stderr", ""))
+        if value
     )
     for line in output.splitlines():
         if line.strip():
@@ -63,7 +66,9 @@ def _verify_executable(
     }
 
 
-def _winget_candidates(package_prefix: str, executable_names: tuple[str, ...]) -> list[Path]:
+def _winget_candidates(
+    package_prefix: str, executable_names: tuple[str, ...]
+) -> list[Path]:
     local_app_data = os.environ.get("LOCALAPPDATA")
     if not local_app_data:
         return []
@@ -112,9 +117,15 @@ def _known_candidates(kind: str) -> list[Path]:
             )
         if local_app_data:
             candidates.append(
-                Path(local_app_data) / "Programs" / "MuseScore 4" / "bin" / "MuseScore4.exe"
+                Path(local_app_data)
+                / "Programs"
+                / "MuseScore 4"
+                / "bin"
+                / "MuseScore4.exe"
             )
-        candidates.extend(_winget_candidates("Musescore.Musescore", ("MuseScore4.exe",)))
+        candidates.extend(
+            _winget_candidates("Musescore.Musescore", ("MuseScore4.exe",))
+        )
     return candidates
 
 
@@ -132,7 +143,11 @@ def discover_tool(
         if configured:
             path = Path(configured.strip().strip('"'))
             if path.is_file():
-                return {"status": "found", "path": str(path), "source": f"env:{env_name}"}
+                return {
+                    "status": "found",
+                    "path": str(path),
+                    "source": f"env:{env_name}",
+                }
             return {
                 "status": "missing",
                 "path": str(path),
@@ -375,15 +390,22 @@ def format_human(report: dict[str, Any]) -> str:
     ]
     for name, result in report["checks"].items():
         status = result.get("status", "unknown").upper()
-        details = result.get("version") or result.get("path") or result.get("reason") or ""
+        details = (
+            result.get("version") or result.get("path") or result.get("reason") or ""
+        )
         lines.append(f"- {name}: {status}" + (f" ({details})" if details else ""))
     nvidia = report["nvidia"]
-    lines.append(f"- nvidia: {nvidia['status'].upper()}" + (f" ({nvidia.get('summary')})" if nvidia.get("summary") else ""))
+    lines.append(
+        f"- nvidia: {nvidia['status'].upper()}"
+        + (f" ({nvidia.get('summary')})" if nvidia.get("summary") else "")
+    )
     for name, result in report["workers"].items():
         lines.append(f"- worker:{name}: {result['status'].upper()}")
     if report["failures"]:
         lines.append("Failures: " + ", ".join(report["failures"]))
     if report["warnings"]:
-        lines.append("Warnings: " + ", ".join(item["check"] for item in report["warnings"]))
+        lines.append(
+            "Warnings: " + ", ".join(item["check"] for item in report["warnings"])
+        )
     lines.append(f"Exit code: {report['exit_code']}")
     return "\n".join(lines)
