@@ -1,0 +1,30 @@
+[project]
+name = "audio2violinscore-melody-worker"
+version = "0.1.0"
+description = "Isolated CPU Melody Worker for Audio2ViolinScore."
+requires-python = "==3.10.20"
+dependencies = [
+  "basic-pitch==0.4.0",
+  "demucs==4.1.0",
+  "numpy>=1.24,<2",
+  "onnxruntime>=1.18,<2",
+  "soundfile>=0.12,<1",
+  "setuptools>=68,<81",
+  "torch==2.1.2",
+]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3,<9",
+]
+
+[tool.uv]
+package = false
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
