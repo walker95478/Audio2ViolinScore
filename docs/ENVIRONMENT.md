@@ -119,4 +119,65 @@ uv sync --no-editable --python 3.11.15 --no-python-downloads
 - Phase 1A 只提交源码、测试、配置模板、文档、smoke 脚本和 `uv.lock`。
 - `.venv`、uv cache、`temp/`、`output/`、音频、模型权重、生成 PDF/MIDI、日志和密钥均由 `.gitignore` 排除。
 - 当前没有提交商业歌曲、模型权重、虚拟环境或 smoke test 二进制产物。
-- Phase 1B（Demucs、Basic Pitch、MuScriptor 和模型）未开始；本阶段完成 push 后暂停等待代码审查。
+- Phase 1B 已完成本地实现与合成链路验收；MuScriptor、后处理、正式 MusicXML 和 benchmark 决策仍暂停。
+## 8. Phase 1B Melody Worker 实测状态
+
+本阶段完成了 Core Worker Protocol v1、Canonical Note Events v1、独立 Melody Worker 和 Core subprocess client。Core .venv 没有重装或新增包；当前源码验收使用现有 Core Python 配合 PYTHONPATH=src，避免违反 Core 环境隔离要求。
+
+### 8.1 隔离环境与版本
+
+| 项目 | 实测结果 |
+|---|---|
+| Worker Python | workers/melody/.venv/Scripts/python.exe，CPython 3.10.20 |
+| Demucs | 4.1.0 |
+| Basic Pitch | 0.4.0 |
+| PyTorch | 2.1.2+cpu，CPU wheel source |
+| ONNX Runtime | 1.23.2 |
+| soundfile | 0.14.0 |
+| setuptools | 80.10.2；为 resampy 的 pkg_resources 运行时引用提供兼容性 |
+| Worker device | cpu |
+| torch.cuda.is_available() | false |
+| ONNX providers | AzureExecutionProvider、CPUExecutionProvider；未安装 CUDA/cuDNN provider |
+| TensorFlow | 未安装 |
+| 模型 | htdemucs，只在合成 smoke 中下载/使用；不提交权重 |
+
+Worker 版本检查：
+
+    workers\melody\.venv\Scripts\python.exe workers\melody\worker.py --version --json
+
+Core doctor 通过源码入口执行时会调用同一个 worker 版本命令，并报告 Python、worker 路径、包版本、CPU device 和缓存逻辑路径：
+
+    $env:PYTHONPATH = "$PWD\src"
+    .\.venv\Scripts\python.exe -m audio2violinscore.cli doctor --json
+
+本机 NVIDIA/GPU 探测逻辑仍保留。当前普通用户执行 nvidia-smi 返回权限不足，因此 doctor 将它记录为非必需 warning；这不改变 Phase 0 记录的 RTX 4060 Laptop GPU，也不触发 CUDA 安装。
+
+### 8.2 缓存与运行边界
+
+Worker 在导入 Demucs/Basic Pitch 前设置：
+
+- TORCH_HOME → cache/torch
+- A2VS_MODEL_CACHE → cache/melody
+- HF_HOME → cache/melody/huggingface
+- HF_HUB_CACHE / HUGGINGFACE_HUB_CACHE → cache/melody/huggingface/hub
+- NUMBA_CACHE_DIR → cache/melody/numba
+
+所有路径均是相对于项目根目录的逻辑缓存位置；cache/、temp/、output/ 和两个 .venv 都被 Git 忽略。第一次诊断性运行在 Worker 修正缓存变量前可能在 %USERPROFILE%\.cache\huggingface 留下了未跟踪模型缓存；该用户缓存没有被删除，后续 Worker 已固定使用项目 D 盘缓存。
+
+### 8.3 合成端到端验收
+
+scripts/smoke_melody_worker.ps1 生成本地短 WAV，经 Core melody_client 启动 worker，完成：
+
+1. Demucs htdemucs CPU separation；
+2. stems/vocals.wav；
+3. Basic Pitch 0.4.0 ONNX inference；
+4. raw/basic_pitch.mid；
+5. canonical/notes.json。
+
+最近一次脚本验收成功：status success，Canonical Note Events 16 条，WAV、MIDI、Canonical JSON 均为非零字节，并通过 MIDI 音高 0..127、onset_sec >= 0、offset_sec > onset_sec 校验。
+
+samples/input/prom_dress-mxmtoon-prom_dress.mp3 当前不存在，因此 prom dress smoke 保持 pending；不下载、不联网寻找替代商业歌曲，也不执行该 smoke。
+
+### 8.4 本阶段边界
+
+本阶段没有安装 MuScriptor、TensorFlow、CUDA/cuDNN 或 MuseSounds；没有创建后处理、自动路由、正式 MusicXML 或 benchmark 结论。reports/benchmarks/README.md 只定义未来允许提交的轻量 JSON/Markdown metadata。
