@@ -1,0 +1,50 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual environments
+.venv/
+.venv-*/
+workers/**/.venv/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Models and caches
+cache/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+
+# Runtime
+temp/
+output/
+
+# Audio material
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.aac
+*.ogg
+*.wma
+*.aiff
+
+# Generated notation / benchmark artifacts
+*.mid
+*.midi
+*.mscz
+*.pdf
+
+# IDE / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
