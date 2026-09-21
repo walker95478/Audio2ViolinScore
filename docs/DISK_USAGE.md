@@ -1,16 +1,31 @@
 # Disk usage
 
-This file is generated at the end of Phase 1A. It must report measured sizes rather than only estimates.
+测量日期：2026-09-21
+测量范围：`D:\软件\扒谱`；目录大小按文件字节求和，运行目录与 Git 元数据分开统计。数值以 GiB（`2^30` 字节）显示。
 
-Required scopes:
+## 项目与工具占用
 
-- project directory, excluding `.git` as a separate metadata row;
-- `.venv`;
-- `tools/` if present;
-- MuseScore installation directory if reliably discoverable;
-- uv cache;
-- `temp/`;
-- `output/`;
-- D: total, used, free, and free percentage.
+| 范围 | 路径 | 字节 | GiB | 说明 |
+|---|---|---:|---:|---|
+| 项目源码/文档 | `D:\软件\扒谱` | 111,864 | 0.000 | 排除 `.git`、`.venv`、`cache`、`temp`、`output` |
+| Git 元数据 | `D:\软件\扒谱\.git` | 77,021 | 0.000 | 单独统计，不属于提交工作内容 |
+| Core `.venv` | `D:\软件\扒谱\.venv` | 35,951,859 | 0.033 | Python 3.11.15、pytest、Ruff 和项目包 |
+| tools | `D:\软件\扒谱\tools` | 0 | 0.000 | 目录当前不存在 |
+| MuseScore Studio 4 | `C:\Program Files\MuseScore 4` | 435,255,044 | 0.405 | 已安装本体，不含 MuseSounds |
+| uv cache | `D:\软件\扒谱\cache\uv` | 39,370,372 | 0.037 | 本阶段为中文路径 workaround 使用的项目缓存 |
+| Phase 1A temp | `D:\软件\扒谱\temp` | 25,126 | 0.000 | smoke test WAV、MusicXML、PDF 和日志；Git 忽略 |
+| output | `D:\软件\扒谱\output` | 0 | 0.000 | 目录当前不存在 |
 
-Runtime directories are intentionally ignored by Git. No audio, model, PDF, or MIDI artifacts belong in this report's tracked content.
+## D: 盘
+
+| 项目 | 字节 | GiB / 比例 |
+|---|---:|---:|
+| 总容量 | 784,383,078,400 | 730.51 GiB |
+| 已用 | 663,663,964,160 | 618.09 GiB |
+| 可用 | 120,719,114,240 | 112.43 GiB（15.39%） |
+
+D: 可用空间高于 Phase 1A 的 12 GiB 最低门槛。后续下载模型或大型组件前仍需重新测量；本表不把未来模型缓存当作已发生占用。
+
+## Git 边界
+
+`.venv`、uv cache、`temp/`、`output/`、音频、模型权重、生成 PDF/MIDI 和日志都由 `.gitignore` 排除。本表中的 smoke test 产物只用于本地验收，不进入公开仓库。
